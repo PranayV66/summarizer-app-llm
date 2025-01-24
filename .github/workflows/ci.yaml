@@ -1,0 +1,87 @@
+name: Publish to ECR
+on:
+  push:
+    branches:
+      - k8s
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: true
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPO_NAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Install yq
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.10.0
+
+      - name: Helm Dependencies Update
+        run: helm dependency update ./charts/llm
+
+      # Update image tag in values.yaml
+      - name: Update image tag in values.yaml and commit to Git
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPO_NAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "ECR_REGISTRY=$ECR_REGISTRY"
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY"
+          echo "IMAGE_TAG=$IMAGE_TAG"
+
+          yq eval '.image.repository = strenv(ECR_REGISTRY) + "/" + strenv(ECR_REPOSITORY)' -i ./charts/llm/values.yaml
+          yq eval '.image.tag = strenv(IMAGE_TAG)' -i ./charts/llm/values.yaml
+
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add ./charts/llm/values.yaml
+          git commit -m "Set .image.repository and .image.tag to $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" || echo "No changes to commit"
+
+      #Increment Chart Version
+      - name: Increment Chart Version and commit to Git
+        run: |
+          current_version=$(yq eval '.version' ./charts/llm/Chart.yaml)
+          IFS='.' read -r major minor patch <<< "$current_version"
+          patch=$((patch+1))
+          new_version="$major.$minor.$patch"
+          echo "Current version: $current_version"
+          echo "New version: $new_version"
+          yq eval ".version = \"$new_version\"" -i ./charts/llm/Chart.yaml
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add ./charts/llm/Chart.yaml
+          git commit -m "Incremented chart version" || echo "No changes to commit"
+
+      # Push to Github
+      - name: Push changes to the k8s branch
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GH_PAT }}
+          branch: k8s

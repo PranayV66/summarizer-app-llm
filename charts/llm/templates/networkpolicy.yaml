@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-llama
+  namespace: default
+  labels:
+    app: summarize-ai-llm
+spec:
+  podSelector:
+    matchLabels:
+      app: summarize-ai-llm
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: "summarize-ai-summarizer-backend"
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}

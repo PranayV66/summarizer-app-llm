@@ -1,0 +1,17 @@
+replicaCount: 1
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+service:
+  port: 11434
+  targetPort: 11434
+nodeSelector:
+  ingress-zone: "1c"
+resources:
+  limits:
+    cpu: "1000m"
+    memory: "1024Mi"
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
