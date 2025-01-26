@@ -5,11 +5,11 @@ nohup ollama serve &
 
 sleep 10
 
-echo "Pulling model llama3.2..."
-ollama pull llama3.2
+echo "Pulling model tinyllama..."
+ollama pull tinyllama
 
 echo "Stopping background Ollama server..."
 pkill ollama
 
-echo "Starting Ollama server with llama3.2..."
+echo "Starting Ollama server with tinyllama..."
 exec ollama serve
