@@ -5,11 +5,11 @@ nohup ollama serve &
 
 sleep 10
 
-echo "Pulling model tinyllama..."
-ollama pull tinyllama
+echo "Pulling model deepseek-r1:1.5b..."
+ollama pull deepseek-r1:1.5b
 
 echo "Stopping background Ollama server..."
 pkill ollama
 
-echo "Starting Ollama server with tinyllama..."
+echo "Starting Ollama server with deepseek-r1:1.5b..."
 exec ollama serve
