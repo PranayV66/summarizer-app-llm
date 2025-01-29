@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
   repository: "555247716309.dkr.ecr.us-east-1.amazonaws.com/summarizer-llm"
-  tag: "7289aabab06e21dc353488c6c811ba6fbc23b0e8"
+  tag: "de8c45e969bf94410763b4fa6199afeb7488130b"
   pullPolicy: IfNotPresent
 service:
   port: 11434
